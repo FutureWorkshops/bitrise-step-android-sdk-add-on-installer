@@ -1,0 +1,109 @@
+format_version: "4"
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+app:
+  envs:
+  # If you want to share this step into a StepLib
+  - BITRISE_STEP_ID: android-sdk-add-on-installer
+  - BITRISE_STEP_VERSION: "0.0.1"
+  - BITRISE_STEP_GIT_CLONE_URL: https://github.com/FutureWorkshops/bitrise-step-android-sdk-add-on-installer.git
+  - MY_STEPLIB_REPO_FORK_GIT_URL: $MY_STEPLIB_REPO_FORK_GIT_URL
+
+workflows:
+  test:
+    envs:
+      - ADD_ON_URL: $ADD_ON_URL
+      - EXPECTED_PATH: $EXPECTED_PATH
+    steps:
+    - script:
+        title: Create temp folder
+        inputs:
+        - content: |-
+            #!/bin/bash
+
+            eval TEMP_FOLDER="$(pwd)/_tmp"
+
+            if [[ -d "${TEMP_FOLDER}" ]]; then
+              rm -r "${TEMP_FOLDER}"
+            fi
+
+            mkdir "${TEMP_FOLDER}"
+    - path::./:
+        title: Step Test
+        description: |-
+          Download a test add-on into _tmp folder
+        inputs:
+        - add_on_url: $ADD_ON_URL
+        - android_sdk_path: ./_tmp
+        - verbose_log: "yes"
+    - script:
+        title: Validate path exists
+        inputs:
+        - content: |-
+            #!/bin/bash
+            eval TEMP_FOLDER="$(pwd)/_tmp"
+            if [[ -d "${TEMP_FOLDER}/${EXPECTED_PATH}" ]]; then
+              echo "Expected structure found at ${TEMP_FOLDER}/${EXPECTED_PATH}"
+            else
+              echo "Expected structure not found at ${TEMP_FOLDER}/${EXPECTED_PATH}"
+              exit 1
+            fi
+    - script:
+        title: Remove temp folder
+        inputs:
+        - content: |-
+            #!/bin/bash
+            eval TEMP_FOLDER="$(pwd)/_tmp"
+            rm -rf "${TEMP_FOLDER}"
+
+
+  # ----------------------------------------------------------------
+  # --- workflows to Share this step into a Step Library
+  audit-this-step:
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            stepman audit --step-yml ./step.yml
+
+  share-this-step:
+    envs:
+      # if you want to share this step into a StepLib
+      - MY_STEPLIB_REPO_FORK_GIT_URL: $MY_STEPLIB_REPO_FORK_GIT_URL
+      - BITRISE_STEP_ID: $BITRISE_STEP_ID
+      - BITRISE_STEP_VERSION: $BITRISE_STEP_VERSION
+      - BITRISE_STEP_GIT_CLONE_URL: $BITRISE_STEP_GIT_CLONE_URL
+    description: |-
+      If this is the first time you try to share a Step you should
+      first call: $ bitrise share
+
+      This will print you a guide, and information about how Step sharing
+      works. Please read it at least once!
+
+      As noted in the Step sharing guide you'll have to fork the
+      StepLib you want to share this step into. Once you're done with forking
+      the repository you should set your own fork's git clone URL
+      in the `.bitrise.secrets.yml` file, or here in the `envs` section,
+      as the value of the `MY_STEPLIB_REPO_FORK_GIT_URL` environment.
+
+      You're now ready to share this Step, just make sure that
+      the `BITRISE_STEP_ID` and `BITRISE_STEP_VERSION`
+      environments are set to the desired values!
+
+      To share this Step into a StepLib you can just run: $ bitrise run share-this-step
+
+      Once it finishes the only thing left is to actually create a Pull Request,
+      the way described in the guide printed at the end of the process.
+    before_run:
+    - audit-this-step
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            bitrise share start -c "${MY_STEPLIB_REPO_FORK_GIT_URL}"
+            bitrise share create --stepid "${BITRISE_STEP_ID}" --tag "${BITRISE_STEP_VERSION}" --git "${BITRISE_STEP_GIT_CLONE_URL}"
+            bitrise share finish

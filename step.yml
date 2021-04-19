@@ -1,0 +1,93 @@
+#
+# A couple of useful guides & docs:
+#
+# - Main Bitrise CLI docs: https://github.com/bitrise-io/bitrise/tree/master/_docs
+# - Step Development Guideline: https://github.com/bitrise-io/bitrise/blob/master/_docs/step-development-guideline.md
+# - Bitrise.yml format spec: https://github.com/bitrise-io/bitrise/blob/master/_docs/bitrise-yml-format-spec.md
+# - Bitrise docs: http://devcenter.bitrise.io/
+# - Bitrise CLI guides: http://devcenter.bitrise.io/bitrise-cli/
+
+title: |-
+  Android SDK Add-on Installer
+summary: |
+  Step to install an Android SDK Add-on locally
+description: |
+  This step will download a specific version of the Android SDK Add-on into the Bitrise VM, allowing apps to build its code linking against this add-on code
+website: https://github.com/FutureWorkshops/bitrise-step-android-sdk-add-on-installer
+source_code_url: https://github.com/FutureWorkshops/bitrise-step-android-sdk-add-on-installer
+support_url: https://github.com/FutureWorkshops/bitrise-step-android-sdk-add-on-installer
+host_os_tags:
+  - osx-10.10
+  - ubuntu-16.04
+
+# If this step should be available only for certain project types
+# just uncomment this `project_type_tags` section and include all the
+# project types supported by the step. If the step can be used for all
+# project types then you can just remove this section.
+# If no `project_type_tags` specified (or specified as an empty array)
+# that means the step can be used for any project type.
+# You can find more information about project type tags in the Step Development Guideline:
+# https://github.com/bitrise-io/bitrise/blob/master/_docs/step-development-guideline.md
+#
+project_type_tags:
+  - android
+  - xamarin
+  - react-native
+  - cordova
+  - ionic
+
+# Type tags are used for categorizing steps, for easier step discovery in Step Libraries.
+# You can find more information about type tags in the Step Development Guideline:
+# https://github.com/bitrise-io/bitrise/blob/master/_docs/step-development-guideline.md
+type_tags:
+  - installer
+
+is_requires_admin_user: true
+is_always_run: false
+is_skippable: false
+
+deps:
+  brew:
+  - name: go
+  - name: unzip
+  apt_get:
+  - name: golang
+    bin_name: go
+  - name: unzip
+
+
+toolkit:
+  go:
+    package_name: github.com/FutureWorkshops/bitrise-step-android-sdk-add-on-installer
+
+
+inputs:
+  - android_sdk_path: $ANDROID_HOME
+    opts:
+      title: "Path to the Android SDK folders in the machine"
+      is_expand: true
+      is_required: true
+  - add_on_url:
+    opts:
+      title: "Add-on URL"
+      summary: URL to the android Add-on XML definition
+      description: |
+        The Android SDK Manager Add-on definition is a XML file that is responsible to define how an extra is added to the
+        $ANDROID_HOME path.
+      is_expand: true
+      is_required: true
+  - verbose_log: "no"
+    opts:
+      category: Debug
+      title: "Enable verbose logging?"
+      description: Enable verbose logging?
+      is_required: true
+      value_options:
+        - "yes"
+        - "no"
+
+outputs:
+  - ADD_ON_SDK_PATH:
+    opts:
+      title: "Local Path of Addon"
+      summary: Path to the installed SDK
