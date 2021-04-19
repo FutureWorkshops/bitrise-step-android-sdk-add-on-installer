@@ -1,8 +1,13 @@
 package main
 
 import (
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/xml"
 	"fmt"
+	"hash"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -14,11 +19,6 @@ import (
 	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-utils/log"
 )
-
-func fail(format string, v ...interface{}) {
-	log.Errorf(format, v...)
-	os.Exit(1)
-}
 
 type Checksum struct {
 	XMLName  xml.Name      `xml:"checksum"`
@@ -51,9 +51,10 @@ type Addon struct {
 }
 
 type Config struct {
-	AddOnURL       string `env:"add_on_url"`
-	AndroidSDKPath string `env:"android_sdk_path"`
-	VerboseLog     bool   `env:"verbose_log,opt[yes,no]"`
+	AddOnURL         string `env:"add_on_url"`
+	AndroidSDKPath   string `env:"android_sdk_path"`
+	VerboseLog       bool   `env:"verbose_log,opt[yes,no]"`
+	ValidateCheckSum bool   `env:"validate_checksum,opt[yes,no]"`
 }
 
 type HashAlgorithm string
@@ -64,6 +65,11 @@ const (
 	SHA512 HashAlgorithm = "sha512"
 	MD5    HashAlgorithm = "md5"
 )
+
+func fail(format string, v ...interface{}) {
+	log.Errorf(format, v...)
+	os.Exit(1)
+}
 
 func (cfg Config) validate() error {
 	if cfg.AddOnURL == "" {
@@ -98,7 +104,7 @@ func (cfg Config) downloadXml() ([]byte, error) {
 // DownloadFile will download a url and store it in local filepath.
 // It writes to the destination file as it downloads it, without
 // loading the entire file into memory.
-func (archive Archive) downloadFile(root string) (string, error) {
+func (archive Archive) downloadFile(root string, validateCheckSum bool) (string, error) {
 
 	// Create the file
 	out, err := ioutil.TempFile(os.TempDir(), archive.Checksum.CheckSum)
@@ -129,7 +135,52 @@ func (archive Archive) downloadFile(root string) (string, error) {
 		return "", err
 	}
 
-	return archive_path, nil
+	if !validateCheckSum {
+		return archive_path, nil
+	}
+
+	reader := io.Reader(out)
+	sum, err := calcualteCheckSum(reader, archive.Checksum.Type)
+
+	if err != nil {
+		log.Debugf("Error calculating checksum %@", err)
+		os.Remove(archive_path)
+		return "", err
+	}
+
+	if sum == archive.Checksum.CheckSum {
+		log.Debugf("Archive matches checksum from add-on")
+		return archive_path, nil
+	} else {
+		log.Debugf("Archive checksum %s do not match XML definition %s", sum, archive.Checksum.CheckSum)
+		os.Remove(archive_path)
+		return "", fmt.Errorf("invalid Checksum")
+	}
+}
+
+func calcualteCheckSum(content io.Reader, algorithm HashAlgorithm) (string, error) {
+	var hash hash.Hash
+
+	log.Debugf("Calculating Hash with %s", algorithm)
+
+	switch algorithm {
+	case SHA1:
+		hash = sha1.New()
+	case SHA256:
+		hash = sha256.New()
+	case SHA512:
+		hash = sha512.New()
+	case MD5:
+		hash = md5.New()
+	}
+
+	if _, err := io.Copy(hash, content); err != nil {
+		return "", err
+	}
+
+	sum := hash.Sum(nil)
+
+	return fmt.Sprintf("%x\n", sum), nil
 }
 
 func (cfg Config) prepareExtraFolder() (string, error) {
@@ -212,7 +263,7 @@ func main() {
 	sdk_folder := addOn.Extra.createFolderStructure(root)
 
 	for _, archive := range addOn.Extra.Archives {
-		path, err := archive.downloadFile(sdk_folder)
+		path, err := archive.downloadFile(sdk_folder, cfg.ValidateCheckSum)
 		if err == nil {
 			log.Debugf("Archive downloaded to %s", path)
 			if err := unzipContent(path, sdk_folder); err != nil {

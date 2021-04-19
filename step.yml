@@ -85,6 +85,17 @@ inputs:
       value_options:
         - "yes"
         - "no"
+  - validate_checksum: "no"
+    opts:
+      category: Debug
+      title: "Validate downloaded file checksum?"
+      description: |-
+        If enabled, the step will calculate the checksum of the downloaded file, based in the type specified in the XML. If the local file
+        do not match the XML data, the step will fail.
+      is_required: true
+      value_options:
+        - "yes"
+        - "no"
 
 outputs:
   - ADD_ON_SDK_PATH:
