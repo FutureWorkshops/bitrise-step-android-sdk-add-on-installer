@@ -16,7 +16,7 @@ Output:
 - **ADD_ON_SDK_PATH:** This is the path where the Add on was installed, relative to `android_sdk_path`
 
 ```yaml
-- git::https://github.com/FutureWorkshops/bitrise-step-android-sdk-add-on-installer.git@master:
+- git::https://github.com/FutureWorkshops/bitrise-step-android-sdk-add-on-installer.git@main:
    title: Install Add On
    inputs:
    - add_on_url: $ADD_ON_URL
