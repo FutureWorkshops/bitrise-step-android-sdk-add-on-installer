@@ -21,9 +21,9 @@ func fail(format string, v ...interface{}) {
 }
 
 type Checksum struct {
-	XMLName  xml.Name `xml:"checksum"`
-	Type     string   `xml:"type,attr"`
-	CheckSum string   `xml:",chardata"`
+	XMLName  xml.Name      `xml:"checksum"`
+	Type     HashAlgorithm `xml:"type,attr"`
+	CheckSum string        `xml:",chardata"`
 }
 
 type Archive struct {
@@ -55,6 +55,15 @@ type Config struct {
 	AndroidSDKPath string `env:"android_sdk_path"`
 	VerboseLog     bool   `env:"verbose_log,opt[yes,no]"`
 }
+
+type HashAlgorithm string
+
+const (
+	SHA1   HashAlgorithm = "sha1"
+	SHA256 HashAlgorithm = "sha256"
+	SHA512 HashAlgorithm = "sha512"
+	MD5    HashAlgorithm = "md5"
+)
 
 func (cfg Config) validate() error {
 	if cfg.AddOnURL == "" {
@@ -101,7 +110,7 @@ func (archive Archive) downloadFile(root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	var archive_path = os.TempDir() + stat.Name()
+	var archive_path = os.TempDir() + "/" + stat.Name()
 
 	log.Debugf("Download archive into %s", archive_path)
 
